@@ -1,0 +1,164 @@
+[
+  {
+    "unique_key": "invoiceNumber",
+    "display_name": "Invoice Number",
+    "extract_hint": "Top right of the document, may be labelled 'Tax Invoice No'",
+    "invoice_field": "Invoice No",
+    "document_field": "Invoice No",
+    "data_type": "string",
+    "category": "header"
+  },
+  {
+    "unique_key": "invoiceDate",
+    "display_name": "Invoice Date",
+    "extract_hint": "Date printed next to the invoice number",
+    "invoice_field": "Invoice Date",
+    "document_field": "Invoice Date",
+    "data_type": "date",
+    "category": "header"
+  },
+  {
+    "unique_key": "dueDate",
+    "display_name": "Due Date",
+    "extract_hint": "If not printed and payment terms say 30 days, compute Invoice Date + 30 days",
+    "invoice_field": "Due Date",
+    "document_field": "Due Date",
+    "data_type": "date",
+    "category": "header"
+  },
+  {
+    "unique_key": "poNumber",
+    "display_name": "PO Number",
+    "extract_hint": "Purchase order reference, usually labelled PO No",
+    "invoice_field": "PO Number",
+    "document_field": "PO Number",
+    "data_type": "string",
+    "category": "header"
+  },
+  {
+    "unique_key": "vendorName",
+    "display_name": "Vendor Name",
+    "extract_hint": "Seller/issuer block, not the customer bill-to block",
+    "invoice_field": "Vendor Name",
+    "document_field": "Vendor Name",
+    "data_type": "string",
+    "category": "header"
+  },
+  {
+    "unique_key": "currency",
+    "display_name": "Currency",
+    "extract_hint": "Three-letter code printed next to amounts, e.g. SAR",
+    "invoice_field": "Currency",
+    "document_field": "Currency",
+    "data_type": "string",
+    "category": "header"
+  },
+  {
+    "unique_key": "subtotal",
+    "display_name": "Subtotal",
+    "extract_hint": "Amount before tax",
+    "invoice_field": "Subtotal",
+    "document_field": "Subtotal",
+    "data_type": "number",
+    "category": "header"
+  },
+  {
+    "unique_key": "tax",
+    "display_name": "Tax",
+    "extract_hint": "VAT amount",
+    "invoice_field": "Tax",
+    "document_field": "Tax",
+    "data_type": "number",
+    "category": "header"
+  },
+  {
+    "unique_key": "total",
+    "display_name": "Total",
+    "extract_hint": "Grand total including tax",
+    "invoice_field": "Total",
+    "document_field": "Total",
+    "data_type": "number",
+    "category": "header"
+  },
+  {
+    "unique_key": "isPaid",
+    "display_name": "Paid",
+    "extract_hint": "Whether the invoice is marked paid",
+    "invoice_field": "Paid",
+    "document_field": "Paid",
+    "data_type": "boolean",
+    "category": "header"
+  },
+  {
+    "unique_key": "deliveryNoteNumber",
+    "display_name": "Delivery Note Number",
+    "extract_hint": "May be absent; return null if not found",
+    "invoice_field": "Delivery Note No",
+    "document_field": "Delivery Note No",
+    "data_type": "string",
+    "category": "header"
+  },
+  {
+    "unique_key": "itemCode",
+    "display_name": "Item Code",
+    "extract_hint": "Line item code/SKU column",
+    "invoice_field": "Item Code",
+    "document_field": "Item Code",
+    "data_type": "string",
+    "category": "line_item"
+  },
+  {
+    "unique_key": "description",
+    "display_name": "Description",
+    "extract_hint": "Line item description column",
+    "invoice_field": "Description",
+    "document_field": "Description",
+    "data_type": "string",
+    "category": "line_item"
+  },
+  {
+    "unique_key": "quantity",
+    "display_name": "Quantity",
+    "extract_hint": "Qty column",
+    "invoice_field": "Qty",
+    "document_field": "Qty",
+    "data_type": "number",
+    "category": "line_item"
+  },
+  {
+    "unique_key": "unit",
+    "display_name": "Unit",
+    "extract_hint": "Unit of measure column, e.g. EA",
+    "invoice_field": "Unit",
+    "document_field": "Unit",
+    "data_type": "string",
+    "category": "line_item"
+  },
+  {
+    "unique_key": "unitPrice",
+    "display_name": "Unit Price",
+    "extract_hint": "Price per unit",
+    "invoice_field": "Unit Price",
+    "document_field": "Unit Price",
+    "data_type": "number",
+    "category": "line_item"
+  },
+  {
+    "unique_key": "amount",
+    "display_name": "Amount",
+    "extract_hint": "Line total (quantity x unit price)",
+    "invoice_field": "Amount",
+    "document_field": "Amount",
+    "data_type": "number",
+    "category": "line_item"
+  },
+  {
+    "unique_key": "vat",
+    "display_name": "VAT %",
+    "extract_hint": "VAT percent on the line",
+    "invoice_field": "VAT",
+    "document_field": "VAT",
+    "data_type": "number",
+    "category": "line_item"
+  }
+]

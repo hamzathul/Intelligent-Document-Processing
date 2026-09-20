@@ -1,0 +1,48 @@
+{
+  "headers": [
+    { "key": "inv_no", "field": "Invoice Number", "type": "string" },
+    {
+      "key": "issue_date",
+      "field": "Issue Date",
+      "type": "date",
+      "hint": "OCR may read the label as 'Issu Date'. Value looks like '2026-Jun-28'."
+    },
+    { "key": "supply_date", "field": "Date of Supply", "type": "date" },
+    { "key": "pay_terms", "field": "Pay Terms", "type": "string" },
+    {
+      "key": "due_date",
+      "field": "Due Date",
+      "type": "date",
+      "hint": "Not printed. 'Pay Terms NET 60' means Issue Date + 60 days. Return the exact ISO date."
+    },
+    {
+      "key": "vendor_name",
+      "field": "Vendor Name",
+      "type": "string",
+      "hint": "The issuer/seller shown at the bottom with the VAT number, NOT the Customer Name & Address block."
+    },
+    { "key": "customer_name", "field": "Customer Name", "type": "string" },
+    { "key": "currency", "field": "Currency", "type": "string", "hint": "Three-letter code printed next to amounts, e.g. SAR." },
+    { "key": "subtotal", "field": "Sub Total", "type": "number" },
+    { "key": "vat", "field": "Total Vat", "type": "number" },
+    { "key": "total", "field": "Total Amount Due", "type": "number" }
+  ],
+  "line_items": [
+    { "key": "s_no", "field": "S.no", "type": "integer" },
+    { "key": "item_no", "field": "Item No", "type": "string" },
+    {
+      "key": "description",
+      "field": "Description",
+      "type": "string",
+      "hint": "May span two OCR lines, e.g. 'CARTON-LAMIFEN' + 'CREAM 15G-TP (REV)'. Join them with a space."
+    },
+    { "key": "unit", "field": "UNIT", "type": "string" },
+    { "key": "unit_price", "field": "Unit Price", "type": "number" },
+    { "key": "qty", "field": "QTY", "type": "number" },
+    { "key": "disc_pct", "field": "DISC %", "type": "number" },
+    { "key": "total", "field": "Total", "type": "number" },
+    { "key": "vat_pct", "field": "VAT %", "type": "number" },
+    { "key": "vat_amount", "field": "VAT Amount", "type": "number" },
+    { "key": "subtotal", "field": "Item Subtotal", "type": "number" }
+  ]
+}

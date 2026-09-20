@@ -1,0 +1,22 @@
+[project]
+name = "idp-ocr"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.141.1",
+    "httpx>=0.28.1",
+    "numpy>=1.24,<2.4",
+    "openai>=3.13.0",
+    "paddleocr==3.7.0",
+    "paddlepaddle==3.2.0",
+    "pillow>=12.3.0",
+    "pydantic>=2.13.5",
+    "pypdfium2>=5.13.0",
+    "pytest>=9.1.1",
+    "python-dotenv>=1.2.3",
+    "python-multipart>=0.0.32",
+    "uvicorn[standard]>=0.52.4",
+]
+
+[[tool.uv.index]]
+url = "https://www.paddlepaddle.org.cn/packages/stable/cpu/"

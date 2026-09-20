@@ -1,0 +1,19 @@
+{
+  "headers": [
+    { "key": "vendor", "field": "Vendor Name", "type": "string" },
+    { "key": "inv_no", "field": "Invoice Number", "type": "string" },
+    { "key": "inv_date", "field": "Invoice Date", "type": "date" },
+    {
+      "key": "due_date",
+      "field": "Due Date",
+      "type": "date",
+      "hint": "If the invoice says 'Payment Terms 30 days', compute Invoice Date + 30 days and return the exact ISO date"
+    },
+    { "key": "total", "field": "Total", "type": "number" }
+  ],
+  "line_items": [
+    { "key": "desc", "field": "Description", "type": "string" },
+    { "key": "qty", "field": "Quantity", "type": "number" },
+    { "key": "amount", "field": "Amount", "type": "number" }
+  ]
+}
