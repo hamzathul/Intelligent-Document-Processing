@@ -71,6 +71,8 @@ def root():
         "extract": "POST /api/extract (multipart fields: file + spec JSON)",
         "extract_invoice": "POST /extract/invoice (sync, multipart: file + unique_ref_no + fields + match)",
         "extract_invoice_v1": "POST /api/v1/extract/invoice (sync alias)",
+        "extract_invoice_vlm": "POST /extract/invoice/vlm (sync direct-VLM, no OCR, all pages)",
+        "extract_invoice_vlm_v1": "POST /api/v1/extract/invoice/vlm (sync alias)",
     }
 
 

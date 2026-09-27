@@ -9,6 +9,7 @@ Pipeline: **PaddleOCR PP-OCRv6 (local inference)** → **OpenAI-compatible LLM (
 - `POST /api/ocr` — raw OCR (per-line text + confidence + bounding boxes).
 - `POST /api/extract` — guided extraction with a caller-defined spec (legacy/generic).
 - `POST /extract/invoice` (alias: `POST /api/v1/extract/invoice`) — sync invoice contract: OCR → LLM extract → PO match, returned inline.
+- `POST /extract/invoice/vlm` (alias: `POST /api/v1/extract/invoice/vlm`) — sync direct-vision contract: page images → VLM extract → PO match, no OCR. Same request/response shape as `/extract/invoice`, minus `page_ranges` (all pages always read).
 - PO matching with `exact / partial / fuzzy / numeric` conditions and priority resolution.
 - Per-request debug traces under `output/debug/`.
 - Interactive docs at `GET /docs`.
@@ -58,7 +59,7 @@ $env:HOST="0.0.0.0"; $env:PORT="8000"; $env:RELOAD="1"; uv run python -m app
 
 ## Configuration (`.env`)
 
-Copy `.env.example` → `.env`. All settings have defaults; only `LLM_API_KEY` is required for extraction.
+Copy `.env.example` → `.env`. All settings have defaults; `LLM_API_KEY` is required for OCR-path extraction (`/api/extract`, `/extract/invoice`), `GOOGLE_API_KEY` for direct-VLM extraction (`/extract/invoice/vlm`).
 
 ```dotenv
 OCR_MODEL=PP-OCRv6_medium
@@ -71,6 +72,17 @@ LLM_BASE_URL=https://api.openai.com/v1
 LLM_API_KEY=
 LLM_MODEL=gpt-4o-mini
 LLM_TIMEOUT_S=60
+
+# Direct-VLM extraction (POST /extract/invoice/vlm) — vision model, no OCR.
+# Google AI Studio (Gemini Developer API). Get a key at https://aistudio.google.com/apikey
+# VLM_BASE_URL / VLM_API_KEY / VLM_MODEL override the GOOGLE_* / GEMINI_* names when set.
+VLM_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai/
+GOOGLE_API_KEY=
+GEMINI_MODEL=gemini-2.5-flash
+VLM_TIMEOUT_S=120
+VLM_MAX_PAGES=8
+VLM_MAX_SIDE_PX=1568
+VLM_JPEG_QUALITY=85
 
 IDP_DEBUG_TRACE=1
 IDP_DEBUG_DIR=output/debug
@@ -211,6 +223,28 @@ Response shape:
 
 Header/table `value`s are strings (numbers stringified, e.g. `"4777.5"`).
 
+### `POST /extract/invoice/vlm` — direct-vision invoice contract (no OCR)
+
+Also at `POST /api/v1/extract/invoice/vlm`. Same multipart contract and same
+response shape as `POST /extract/invoice`, except:
+
+- No PaddleOCR step — the VLM reads page images directly.
+- No `?page_ranges` — **all** pages are always rendered and sent (PDFs via
+  `pypdfium2`, downscaled to `VLM_MAX_SIDE_PX` JPEG). Documents with more than
+  `VLM_MAX_PAGES` pages are rejected with `400` (split the file).
+- `intermediate_data` carries `{"model": ..., "mode": "vlm-direct", "pages": N}`.
+
+```powershell
+curl -X POST "http://127.0.0.1:8000/extract/invoice/vlm" `
+  -F "file=@samples/invoices/synthetic_invoice.png" `
+  -F "unique_ref_no=1042" `
+  -F "fields=@samples/invoices/invoice_fields.full.json;type=application/json" `
+  -F "match=false"
+```
+
+Requires `GOOGLE_API_KEY` (AI Studio key, else HTTP `503`). Default model
+`GEMINI_MODEL=gemini-2.5-flash` via Google's OpenAI-compatible endpoint.
+
 ### Errors
 
 | Code | Meaning |
@@ -227,18 +261,27 @@ Header/table `value`s are strings (numbers stringified, e.g. `"4777.5"`).
 app/
   main.py            # FastAPI factory, legacy /api/ocr + /api/extract routes
   __main__.py        # `uv run python -m app` entrypoint
-  ocr_service.py     # PaddleOCR singleton (PP-OCRv6), parse_result normalizer
-  llm_client.py      # OpenAI-compatible client (strict json_schema -> json_object fallback)
+  infra/             # external-service clients (canonical implementations)
+    llm_client.py    # OpenAI-compatible text client (strict json_schema -> json_object fallback)
+    vlm_client.py    # OpenAI-compatible vision client (page images -> JSON)
+    ocr_service.py   # PaddleOCR singleton (PP-OCRv6), parse_result normalizer
+  llm_client.py      # alias -> app.infra.llm_client (backward compat)
+  ocr_service.py     # alias -> app.infra.ocr_service (backward compat)
   extract_service.py # generic spec orchestrator (OCR pages -> prompt -> LLM -> coerce)
   prompt.py  coerce.py  fields.py
   api/deps.py        # upload validation (type + size)
-  api/v1/invoice.py  # POST /extract/invoice
+  api/v1/forms.py    # shared multipart validators (both invoice routes)
+  api/v1/invoice.py  # POST /extract/invoice (OCR -> LLM -> match)
+  api/v1/invoice_vlm.py  # POST /extract/invoice/vlm (page images -> VLM -> match, no OCR)
   api/v1/router.py
   dtos/invoice.py    # FieldMapping / MatchingCondition / ProcessedInvoiceResponse
-  services/pipeline.py       # invoice extract pipeline
+  services/pipeline.py       # invoice extract pipeline (OCR text path)
+  services/vlm_pipeline.py   # direct-VLM extract pipeline (page images path)
+  services/images.py         # upload bytes -> vision-ready JPEG pages (PDF via pypdfium2)
+  services/vlm_prompt.py     # vision message builder (spec + page images)
   services/matcher.py        # PO matching (exact/partial/fuzzy/numeric + priority)
   services/field_adapter.py
-  core/config.py     # Settings (env -> defaults)
+  core/config.py     # Settings (env -> defaults, incl. VLM_*)
   core/debug_trace.py  core/errors.py  core/logging.py
   utils/files.py
 samples/invoices/    # spec.example.json, tegan_spec.json, invoice_fields.full.json, synthetic_invoice.png

@@ -14,6 +14,11 @@ Each ``POST /extract/invoice`` call gets its own directory::
         08_meta.json          timings, model, trace dir
         error.json            stage + detail when the request fails
 
+The direct-VLM route (``POST /extract/invoice/vlm``) uses the same layout
+with vision equivalents: ``02_vlm_input.json`` (page metadata only — never
+full base64 payloads), ``03_vlm_request.json`` (messages with image URLs
+truncated), ``04_vlm_response.json`` (or ``04_vlm_error.json``).
+
 Tracing never breaks a request: all writes are best-effort (warnings only).
 Disable with ``IDP_DEBUG_TRACE=0``. Old traces are pruned to
 ``IDP_DEBUG_KEEP`` directories (default 100).

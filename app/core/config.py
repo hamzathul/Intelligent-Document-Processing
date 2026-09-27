@@ -47,6 +47,33 @@ class Settings:
     llm_model: str = field(default_factory=lambda: os.getenv("LLM_MODEL", "gpt-4o-mini"))
     llm_timeout_s: float = field(default_factory=lambda: _get_float("LLM_TIMEOUT_S", 60.0))
 
+    # Direct-VLM invoice route (POST /extract/invoice/vlm): vision model that
+    # reads page images, no PaddleOCR involved. Defaults to Google AI Studio
+    # (Gemini Developer API, OpenAI-compatible endpoint). VLM_* explicitly
+    # set always wins; GOOGLE_API_KEY / GEMINI_MODEL are the primary names.
+    vlm_base_url: str = field(
+        default_factory=lambda: os.getenv(
+            "VLM_BASE_URL", "https://generativelanguage.googleapis.com/v1beta/openai/"
+        )
+    )
+    vlm_api_key: str = field(
+        default_factory=lambda: os.getenv(
+            "VLM_API_KEY",
+            os.getenv(
+                "GOOGLE_API_KEY", os.getenv("GEMINI_API_KEY", os.getenv("LLM_API_KEY", ""))
+            ),
+        )
+    )
+    vlm_model: str = field(
+        default_factory=lambda: os.getenv(
+            "VLM_MODEL", os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+        )
+    )
+    vlm_timeout_s: float = field(default_factory=lambda: _get_float("VLM_TIMEOUT_S", 120.0))
+    vlm_max_pages: int = field(default_factory=lambda: _get_int("VLM_MAX_PAGES", 8))
+    vlm_max_side_px: int = field(default_factory=lambda: _get_int("VLM_MAX_SIDE_PX", 1568))
+    vlm_jpeg_quality: int = field(default_factory=lambda: _get_int("VLM_JPEG_QUALITY", 85))
+
     # Per-request debug traces (see app.core.debug_trace).
     debug_trace_enabled: bool = field(default_factory=lambda: _get_bool("IDP_DEBUG_TRACE", True))
     debug_trace_dir: str = field(default_factory=lambda: os.getenv("IDP_DEBUG_DIR", "output/debug"))

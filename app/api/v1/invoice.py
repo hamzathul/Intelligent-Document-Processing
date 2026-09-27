@@ -3,20 +3,23 @@
 ``POST /extract/invoice`` accepts the core multipart contract and returns
 :class:`ProcessedInvoiceResponse` directly. ``callback_url`` is accepted for
 contract compatibility but ignored — nothing is POSTed anywhere.
+
+Form validation lives in :mod:`app.api.v1.forms` (shared with the
+direct-VLM route). The ``_validated_*`` / ``_parse_*`` aliases below are kept
+for backward compatibility (tests import them).
 """
 
 from __future__ import annotations
 
-import json
 import time
 from typing import Any, Optional
 
 from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile
 from fastapi.concurrency import run_in_threadpool
-from pydantic import TypeAdapter, ValidationError
 
 from app import llm_client, ocr_service
 from app.api.deps import read_validated_upload
+from app.api.v1 import forms
 from app.core.config import get_settings
 from app.core.debug_trace import new_trace
 from app.core.logging import get_logger, log_stage
@@ -31,100 +34,12 @@ from app.utils.files import saved_temp_file
 log = get_logger()
 router = APIRouter(tags=["extract"])
 
-_fields_adapter = TypeAdapter(list[FieldMapping])
-_conditions_adapter = TypeAdapter(list[MatchingCondition])
-
-_TRUE_TOKENS = {"true", "1", "yes", "y", "on"}
-_FALSE_TOKENS = {"false", "0", "no", "n", "off", ""}
-
-
-def _parse_json_form(raw: str | None, name: str, *, required: bool) -> Any | None:
-    if raw is None or (isinstance(raw, str) and not raw.strip()):
-        if required:
-            raise HTTPException(status_code=400, detail=f"{name} is required")
-        return None
-    try:
-        return json.loads(raw)
-    except json.JSONDecodeError as exc:
-        raise HTTPException(status_code=400, detail=f"{name} is not valid JSON: {exc}") from exc
-
-
-def _parse_match_flag(raw: Any) -> bool:
-    if isinstance(raw, bool):
-        return raw
-    if raw is None:
-        raise HTTPException(status_code=400, detail="match is required")
-    token = str(raw).strip().lower()
-    if token in _TRUE_TOKENS:
-        return True
-    if token in _FALSE_TOKENS:
-        return False
-    raise HTTPException(status_code=400, detail="match must be true or false")
-
-
-def _validated_fields(raw: Any) -> list[FieldMapping]:
-    if not isinstance(raw, list) or not raw:
-        raise HTTPException(status_code=400, detail="fields must be a non-empty JSON array")
-    try:
-        fields = _fields_adapter.validate_python(raw)
-    except ValidationError as exc:
-        raise HTTPException(status_code=400, detail=f"invalid fields: {exc}") from exc
-    # unique_key must be unique *within* each category (header / line_item),
-    # mirroring ExtractSpec. The same key may appear once as a header total
-    # and once as a per-row line value (e.g. GST header totals vs row tax).
-    for category in ("header", "line_item"):
-        seen: set[str] = set()
-        dupes: set[str] = set()
-        for f in fields:
-            if f.category != category:
-                continue
-            if f.unique_key in seen:
-                dupes.add(f.unique_key)
-            seen.add(f.unique_key)
-        if dupes:
-            raise HTTPException(
-                status_code=400,
-                detail=f"duplicate unique_key in {category} fields: {sorted(dupes)}",
-            )
-    return fields
-
-
-def _validated_conditions(raw: Any, fields: list[FieldMapping]) -> list[MatchingCondition]:
-    if not isinstance(raw, list) or not raw:
-        raise HTTPException(
-            status_code=400, detail="matching_conditions must be a non-empty JSON array"
-        )
-    try:
-        conditions = _conditions_adapter.validate_python(raw)
-    except ValidationError as exc:
-        raise HTTPException(
-            status_code=400, detail=f"invalid matching_conditions: {exc}"
-        ) from exc
-    known = {f.unique_key for f in fields}
-    for cond in conditions:
-        if cond.invoice_field_key not in known:
-            raise HTTPException(
-                status_code=400,
-                detail=f"matching_conditions invoice_field_key "
-                f"'{cond.invoice_field_key}' is not in fields[].unique_key",
-            )
-    return conditions
-
-
-def _validated_po_items(raw: Any) -> list[dict[str, Any]]:
-    if not isinstance(raw, list) or not raw:
-        raise HTTPException(
-            status_code=400, detail="po_items must be a non-empty JSON array"
-        )
-    rows: list[dict[str, Any]] = []
-    for item in raw:
-        if isinstance(item, dict):
-            rows.append(item)
-        elif hasattr(item, "model_dump"):
-            rows.append(item.model_dump())
-        else:
-            raise HTTPException(status_code=400, detail="po_items must be an array of objects")
-    return rows
+# Backward-compatible aliases (tests import the private helpers).
+_parse_json_form = forms.parse_json_form
+_parse_match_flag = forms.parse_match_flag
+_validated_fields = forms.validated_fields
+_validated_conditions = forms.validated_conditions
+_validated_po_items = forms.validated_po_items
 
 
 async def _ocr_text_pages(
@@ -161,29 +76,24 @@ async def extract_invoice(
 ) -> ProcessedInvoiceResponse:
     """Sync extraction: OCR -> LLM -> match, returned inline (no callback POST)."""
     t0 = time.time()
-    ref = (unique_ref_no or "").strip()
-    if not ref:
-        raise HTTPException(status_code=400, detail="unique_ref_no is required")
+    ref = forms.validated_ref(unique_ref_no)
 
-    fields_raw = _parse_json_form(fields, "fields", required=True)
-    field_mappings = _validated_fields(fields_raw)
-    do_match = _parse_match_flag(match)
+    fields_raw = forms.parse_json_form(fields, "fields", required=True)
+    field_mappings = forms.validated_fields(fields_raw)
+    do_match = forms.parse_match_flag(match)
 
     po_rows: list[dict[str, Any]] | None = None
     conditions: list[MatchingCondition] | None = None
     if do_match:
-        po_rows = _validated_po_items(_parse_json_form(po_items, "po_items", required=True))
-        conditions = _validated_conditions(
-            _parse_json_form(matching_conditions, "matching_conditions", required=True),
+        po_rows = forms.validated_po_items(
+            forms.parse_json_form(po_items, "po_items", required=True)
+        )
+        conditions = forms.validated_conditions(
+            forms.parse_json_form(matching_conditions, "matching_conditions", required=True),
             field_mappings,
         )
 
-    prior: dict[str, Any] | None = None
-    if extraction_json is not None and str(extraction_json).strip():
-        parsed_prior = _parse_json_form(extraction_json, "extraction_json", required=False)
-        if parsed_prior is not None and not isinstance(parsed_prior, dict):
-            raise HTTPException(status_code=400, detail="extraction_json must be a JSON object")
-        prior = parsed_prior
+    prior = forms.validated_prior_extraction(extraction_json)
 
     settings = get_settings()
     trace = new_trace(
